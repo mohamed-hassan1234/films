@@ -54,6 +54,8 @@ api.interceptors.response.use((response) => {
 const inferUploadPath = (url = "", kind = "") => {
   const value = String(url).trim();
   if (!value) return "";
+  const uploadIndex = value.indexOf("/uploads/");
+  if (uploadIndex >= 0) return value.slice(uploadIndex);
   if (value.startsWith("/uploads/")) return value;
   if (value.startsWith("uploads/")) return `/${value}`;
   if (value.startsWith("/")) return value;
@@ -68,8 +70,10 @@ const inferUploadPath = (url = "", kind = "") => {
 
 export const toMediaUrl = (url, kind = "") => {
   if (!url) return "";
-  if (url.startsWith("http")) return url;
-  return `${API_URL.replace("/api", "")}${inferUploadPath(url, kind)}`;
+  const path = inferUploadPath(url, kind);
+  if (path.startsWith("/uploads/")) return `${API_URL}${path}`;
+  if (url.startsWith("http")) return url.replace(/^http:\/\//i, "https://");
+  return `${API_URL.replace(/\/api\/?$/, "")}${path}`;
 };
 
 export default api;

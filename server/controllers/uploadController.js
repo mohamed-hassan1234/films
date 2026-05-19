@@ -138,7 +138,7 @@ const completeVideoUpload = asyncHandler(async (req, res) => {
 
   await fsp.rm(dir, { recursive: true, force: true });
 
-  const videoUrl = `${req.protocol}://${req.get("host")}/uploads/${uploadFolders.video}/${finalName}`;
+  const videoUrl = `/uploads/${uploadFolders.video}/${finalName}`;
   res.json({ videoUrl });
 });
 

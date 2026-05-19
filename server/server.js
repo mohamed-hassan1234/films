@@ -43,10 +43,15 @@ app.use(
   rateLimit({
     windowMs: 15 * 60 * 1000,
     max: 600,
-    skip: (req) => req.path.startsWith("/api/admin/uploads/videos")
+    skip: (req) =>
+      req.path.startsWith("/api/admin/uploads/videos") ||
+      req.path.startsWith("/api/uploads") ||
+      req.path.startsWith("/uploads")
   })
 );
-app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+const uploadsPath = path.join(__dirname, "uploads");
+app.use("/uploads", express.static(uploadsPath, { acceptRanges: true, maxAge: "7d" }));
+app.use("/api/uploads", express.static(uploadsPath, { acceptRanges: true, maxAge: "7d" }));
 
 const legacyUploadFolders = {
   "poster-": "posters",
@@ -60,6 +65,15 @@ app.get("/:filename", (req, res, next) => {
   const matchedPrefix = Object.keys(legacyUploadFolders).find((prefix) => filename.startsWith(prefix));
   if (!matchedPrefix) return next();
   return res.sendFile(path.join(__dirname, "uploads", legacyUploadFolders[matchedPrefix], filename), (error) => {
+    if (error) next();
+  });
+});
+
+app.get("/api/:filename", (req, res, next) => {
+  const filename = path.basename(req.params.filename || "");
+  const matchedPrefix = Object.keys(legacyUploadFolders).find((prefix) => filename.startsWith(prefix));
+  if (!matchedPrefix) return next();
+  return res.sendFile(path.join(uploadsPath, legacyUploadFolders[matchedPrefix], filename), (error) => {
     if (error) next();
   });
 });

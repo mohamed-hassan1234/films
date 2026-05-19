@@ -12,7 +12,7 @@ const { uploadFolders } = require("../middleware/uploadMiddleware");
 const fileUrl = (req, file) => {
   if (!file) return undefined;
   const folder = uploadFolders[file.fieldname] || (file.mimetype.startsWith("video/") ? "movies" : "images");
-  return `${req.protocol}://${req.get("host")}/uploads/${folder}/${file.filename}`;
+  return `/uploads/${folder}/${file.filename}`;
 };
 
 const pickUploadUrls = (req) => {
