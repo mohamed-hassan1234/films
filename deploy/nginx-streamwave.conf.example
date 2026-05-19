@@ -1,11 +1,11 @@
 # Add these directives to the Nginx server/location that proxies flim.atmaengi.com to the Node API.
-# The app uploads videos in chunks. client_max_body_size must be higher than CHUNK_UPLOAD_MB.
-# Example: CHUNK_UPLOAD_MB=25 needs client_max_body_size 64m or higher.
+# The app uploads videos in chunks. client_max_body_size must be higher than each chunk.
+# Default: browser chunks are 0.5MB and CHUNK_UPLOAD_MB=1, so 2m is enough.
 
 server {
   server_name flim.atmaengi.com;
 
-  client_max_body_size 64m;
+  client_max_body_size 2m;
   client_body_timeout 1800s;
   proxy_read_timeout 1800s;
   proxy_send_timeout 1800s;

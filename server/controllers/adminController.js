@@ -17,8 +17,8 @@ const folderSize = (folder) => {
 };
 
 const stats = asyncHandler(async (_req, res) => {
-  const maxUploadMb = Number(process.env.MAX_UPLOAD_MB || 5120);
-  const uploadLimitMb = Number.isFinite(maxUploadMb) && maxUploadMb > 0 ? maxUploadMb : 5120;
+  const maxUploadMb = Number(process.env.MAX_UPLOAD_MB || 27000);
+  const uploadLimitMb = Number.isFinite(maxUploadMb) && maxUploadMb > 0 ? maxUploadMb : 27000;
   const uploadLimitBytes = uploadLimitMb * 1024 * 1024;
   const [totalUsers, totalMovies, totalSeries, totalGenres, recentlyAdded, mostWatched, latestUsers, draftMovies] = await Promise.all([
     User.countDocuments(),

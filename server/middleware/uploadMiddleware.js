@@ -4,13 +4,13 @@ const multer = require("multer");
 
 const uploadRoot = path.join(__dirname, "..", "uploads");
 if (!fs.existsSync(uploadRoot)) fs.mkdirSync(uploadRoot, { recursive: true });
-const configuredMaxUploadMb = Number(process.env.MAX_UPLOAD_MB || 5120);
-const maxUploadMb = Number.isFinite(configuredMaxUploadMb) && configuredMaxUploadMb > 0 ? configuredMaxUploadMb : 5120;
+const configuredMaxUploadMb = Number(process.env.MAX_UPLOAD_MB || 27000);
+const maxUploadMb = Number.isFinite(configuredMaxUploadMb) && configuredMaxUploadMb > 0 ? configuredMaxUploadMb : 27000;
 const configuredUploadTimeoutMs = Number(process.env.UPLOAD_TIMEOUT_MS || 30 * 60 * 1000);
 const uploadTimeoutMs =
   Number.isFinite(configuredUploadTimeoutMs) && configuredUploadTimeoutMs > 0 ? configuredUploadTimeoutMs : 30 * 60 * 1000;
-const configuredChunkUploadMb = Number(process.env.CHUNK_UPLOAD_MB || 25);
-const chunkUploadMb = Number.isFinite(configuredChunkUploadMb) && configuredChunkUploadMb > 0 ? configuredChunkUploadMb : 25;
+const configuredChunkUploadMb = Number(process.env.CHUNK_UPLOAD_MB || 1);
+const chunkUploadMb = Number.isFinite(configuredChunkUploadMb) && configuredChunkUploadMb > 0 ? configuredChunkUploadMb : 1;
 
 const uploadFolders = {
   poster: "posters",

@@ -165,6 +165,6 @@ server/
 ## Notes
 
 - Uploaded media is served from `server/uploads`.
-- Large videos are uploaded in chunks before the movie is saved. Keep `CHUNK_UPLOAD_MB` lower than your deployed proxy limit, and make the proxy allow at least that chunk size; see `deploy/nginx-streamwave.conf.example` or `deploy/apache-streamwave.conf.example`.
+- Large videos are uploaded in chunks before the movie is saved. The default browser chunk is 0.5MB and the API allows `CHUNK_UPLOAD_MB=1`, which works with very restrictive proxies. For faster uploads, raise both the deployed proxy request limit and `VITE_VIDEO_CHUNK_MB`.
 - Seeded posters and banners use neutral placeholder media with original fictional titles.
 - Replace `JWT_SECRET` in production-style testing with a long random value.

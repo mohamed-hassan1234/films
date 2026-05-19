@@ -43,8 +43,9 @@ const blankMovie = {
 
 const imageAccept = "image/jpeg,image/png,image/webp";
 const videoAccept = "video/mp4,video/webm,video/quicktime,.mp4,.webm,.mov,.m4v";
-const configuredChunkMb = Number(import.meta.env.VITE_VIDEO_CHUNK_MB || 25);
-const videoChunkSize = 1024 * 1024 * (Number.isFinite(configuredChunkMb) && configuredChunkMb > 0 ? configuredChunkMb : 25);
+const configuredChunkMb = Number(import.meta.env.VITE_VIDEO_CHUNK_MB || 0.5);
+const initialVideoChunkSize = 1024 * 1024 * (Number.isFinite(configuredChunkMb) && configuredChunkMb > 0 ? configuredChunkMb : 0.5);
+const minVideoChunkSize = 128 * 1024;
 
 const formatBytes = (bytes = 0) => {
   if (!bytes) return "";
@@ -208,17 +209,17 @@ const AdminMovieForm = () => {
     update(`${name}Url`, "");
   };
 
-  const uploadVideoInChunks = async (file) => {
+  const postVideoChunks = async (file, chunkSize) => {
     const uploadId =
       typeof crypto !== "undefined" && crypto.randomUUID
         ? crypto.randomUUID()
         : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-    const totalChunks = Math.ceil(file.size / videoChunkSize);
+    const totalChunks = Math.ceil(file.size / chunkSize);
 
     try {
       for (let chunkIndex = 0; chunkIndex < totalChunks; chunkIndex += 1) {
-        const start = chunkIndex * videoChunkSize;
-        const end = Math.min(start + videoChunkSize, file.size);
+        const start = chunkIndex * chunkSize;
+        const end = Math.min(start + chunkSize, file.size);
         const chunk = file.slice(start, end);
         const fd = new FormData();
 
@@ -249,6 +250,23 @@ const AdminMovieForm = () => {
       await api.delete(`/admin/uploads/videos/${uploadId}`).catch(() => {});
       throw error;
     }
+  };
+
+  const uploadVideoInChunks = async (file) => {
+    let chunkSize = initialVideoChunkSize;
+
+    while (chunkSize >= minVideoChunkSize) {
+      try {
+        return await postVideoChunks(file, chunkSize);
+      } catch (error) {
+        if (error.response?.status !== 413 || chunkSize <= minVideoChunkSize) throw error;
+        chunkSize = Math.max(minVideoChunkSize, Math.floor(chunkSize / 2));
+        setProgress(0);
+        setMessage(`Server rejected the chunk size. Retrying video upload with ${formatBytes(chunkSize)} chunks.`);
+      }
+    }
+
+    throw new Error("Video upload failed because the server rejected even the smallest chunk size.");
   };
 
   const submit = async (event) => {
@@ -312,7 +330,7 @@ const AdminMovieForm = () => {
       setTimeout(() => navigate("/admin/movies"), 500);
     } catch (err) {
       if (err.response?.status === 413) {
-        setError("The video is larger than the deployed server currently allows. Increase the proxy upload limit, then try again.");
+        setError("The server still rejects the upload chunks. Set CHUNK_UPLOAD_MB=1 on the API server and allow at least 1MB request bodies in the proxy.");
       } else {
         setError(err.response?.data?.message || "Movie could not be saved. Check the form and try again.");
       }
