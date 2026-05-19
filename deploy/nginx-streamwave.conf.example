@@ -1,11 +1,11 @@
 # Add these directives to the Nginx server/location that proxies flim.atmaengi.com to the Node API.
-# Without client_max_body_size, Nginx commonly rejects video uploads with:
-# 413 Request Entity Too Large
+# The app uploads videos in chunks. client_max_body_size must be higher than CHUNK_UPLOAD_MB.
+# Example: CHUNK_UPLOAD_MB=25 needs client_max_body_size 64m or higher.
 
 server {
   server_name flim.atmaengi.com;
 
-  client_max_body_size 2048m;
+  client_max_body_size 64m;
   client_body_timeout 1800s;
   proxy_read_timeout 1800s;
   proxy_send_timeout 1800s;

@@ -1,0 +1,18 @@
+# Add these directives to the Apache virtual host that proxies flim.atmaengi.com to the Node API.
+# The app uploads videos in chunks. LimitRequestBody must be higher than CHUNK_UPLOAD_MB.
+# Example: CHUNK_UPLOAD_MB=25 needs LimitRequestBody 67108864 or higher.
+
+<VirtualHost *:443>
+  ServerName flim.atmaengi.com
+
+  LimitRequestBody 67108864
+  ProxyTimeout 1800
+  Timeout 1800
+
+  ProxyPreserveHost On
+  ProxyPass /api/ http://127.0.0.1:5001/api/ timeout=1800
+  ProxyPassReverse /api/ http://127.0.0.1:5001/api/
+
+  ProxyPass /uploads/ http://127.0.0.1:5001/uploads/ timeout=1800
+  ProxyPassReverse /uploads/ http://127.0.0.1:5001/uploads/
+</VirtualHost>

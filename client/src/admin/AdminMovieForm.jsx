@@ -43,6 +43,8 @@ const blankMovie = {
 
 const imageAccept = "image/jpeg,image/png,image/webp";
 const videoAccept = "video/mp4,video/webm,video/quicktime,.mp4,.webm,.mov,.m4v";
+const configuredChunkMb = Number(import.meta.env.VITE_VIDEO_CHUNK_MB || 25);
+const videoChunkSize = 1024 * 1024 * (Number.isFinite(configuredChunkMb) && configuredChunkMb > 0 ? configuredChunkMb : 25);
 
 const formatBytes = (bytes = 0) => {
   if (!bytes) return "";
@@ -206,6 +208,49 @@ const AdminMovieForm = () => {
     update(`${name}Url`, "");
   };
 
+  const uploadVideoInChunks = async (file) => {
+    const uploadId =
+      typeof crypto !== "undefined" && crypto.randomUUID
+        ? crypto.randomUUID()
+        : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const totalChunks = Math.ceil(file.size / videoChunkSize);
+
+    try {
+      for (let chunkIndex = 0; chunkIndex < totalChunks; chunkIndex += 1) {
+        const start = chunkIndex * videoChunkSize;
+        const end = Math.min(start + videoChunkSize, file.size);
+        const chunk = file.slice(start, end);
+        const fd = new FormData();
+
+        fd.append("uploadId", uploadId);
+        fd.append("chunkIndex", String(chunkIndex));
+        fd.append("totalChunks", String(totalChunks));
+        fd.append("filename", file.name);
+        fd.append("chunk", chunk, file.name);
+
+        await api.post("/admin/uploads/videos/chunks", fd, {
+          onUploadProgress: (event) => {
+            const loadedInChunk = event.total ? event.loaded / event.total : 0;
+            const uploadedRatio = (chunkIndex + loadedInChunk) / totalChunks;
+            setProgress(Math.max(1, Math.min(95, Math.round(uploadedRatio * 95))));
+          }
+        });
+      }
+
+      setProgress(97);
+      const { data } = await api.post("/admin/uploads/videos/complete", {
+        uploadId,
+        totalChunks,
+        filename: file.name
+      });
+      setProgress(99);
+      return data.videoUrl;
+    } catch (error) {
+      await api.delete(`/admin/uploads/videos/${uploadId}`).catch(() => {});
+      throw error;
+    }
+  };
+
   const submit = async (event) => {
     event.preventDefault();
     const intent = event.nativeEvent.submitter?.value || saveStatus;
@@ -226,10 +271,16 @@ const AdminMovieForm = () => {
         return;
       }
 
+      let uploadedVideoUrl = form.videoUrl;
+      if (files.video) {
+        uploadedVideoUrl = await uploadVideoInChunks(files.video);
+      }
+
       const fd = new FormData();
       const selectedGenre = genres.find((genre) => genre._id === form.genreId);
       const payload = {
         ...form,
+        videoUrl: uploadedVideoUrl,
         status: intent,
         genre: selectedGenre?.name || form.genre,
         genres: form.genreId,
@@ -243,7 +294,7 @@ const AdminMovieForm = () => {
           fd.append(key, value);
         }
       });
-      Object.entries(files).forEach(([key, file]) => file && fd.append(key, file));
+      Object.entries(files).forEach(([key, file]) => key !== "video" && file && fd.append(key, file));
       Object.entries(removed).forEach(([key, value]) => value && fd.append(`remove${key}`, "true"));
 
       const config = {
@@ -255,6 +306,7 @@ const AdminMovieForm = () => {
 
       if (editing) await api.put(`/admin/movies/${id}`, fd, config);
       else await api.post("/admin/movies", fd, config);
+      setProgress(100);
 
       setMessage(intent === "draft" ? "Movie saved as draft." : "Movie saved successfully.");
       setTimeout(() => navigate("/admin/movies"), 500);

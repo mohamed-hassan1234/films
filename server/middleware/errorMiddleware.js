@@ -9,7 +9,7 @@ const errorHandler = (err, _req, res, _next) => {
   const isUploadError = err.name === "MulterError";
   const isValidationError = err.name === "ValidationError";
   const isCastError = err.name === "CastError";
-  const maxUploadMb = Number(process.env.MAX_UPLOAD_MB || 2048);
+  const maxUploadMb = Number(process.env.MAX_UPLOAD_MB || 5120);
   const status =
     err.statusCode ||
     (isUploadSizeError || isBodySizeError ? 413 : undefined) ||
