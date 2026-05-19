@@ -5,17 +5,20 @@ const notFound = (req, res, next) => {
 
 const errorHandler = (err, _req, res, _next) => {
   const isUploadSizeError = err.name === "MulterError" && err.code === "LIMIT_FILE_SIZE";
+  const isBodySizeError = err.type === "entity.too.large" || err.status === 413;
   const isUploadError = err.name === "MulterError";
   const isValidationError = err.name === "ValidationError";
   const isCastError = err.name === "CastError";
-  const maxUploadMb = Number(process.env.MAX_UPLOAD_MB || 1024000);
+  const maxUploadMb = Number(process.env.MAX_UPLOAD_MB || 2048);
   const status =
     err.statusCode ||
-    (isUploadSizeError ? 413 : undefined) ||
+    (isUploadSizeError || isBodySizeError ? 413 : undefined) ||
     (isUploadError || isValidationError || isCastError ? 400 : undefined) ||
     (res.statusCode === 200 ? 500 : res.statusCode);
   const message = isUploadSizeError
     ? `The uploaded movie file is too large. The current limit is ${maxUploadMb} MB.`
+    : isBodySizeError
+      ? "The request is too large for the server. If this happens only after deployment, increase your reverse proxy/client body size limit."
     : err.message || "Server error";
 
   res.status(status).json({

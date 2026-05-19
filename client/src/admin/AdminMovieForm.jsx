@@ -259,7 +259,11 @@ const AdminMovieForm = () => {
       setMessage(intent === "draft" ? "Movie saved as draft." : "Movie saved successfully.");
       setTimeout(() => navigate("/admin/movies"), 500);
     } catch (err) {
-      setError(err.response?.data?.message || "Movie could not be saved. Check the form and try again.");
+      if (err.response?.status === 413) {
+        setError("The video is larger than the deployed server currently allows. Increase the proxy upload limit, then try again.");
+      } else {
+        setError(err.response?.data?.message || "Movie could not be saved. Check the form and try again.");
+      }
     } finally {
       setLoading(false);
     }

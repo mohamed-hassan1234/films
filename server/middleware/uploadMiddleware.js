@@ -4,8 +4,11 @@ const multer = require("multer");
 
 const uploadRoot = path.join(__dirname, "..", "uploads");
 if (!fs.existsSync(uploadRoot)) fs.mkdirSync(uploadRoot, { recursive: true });
-const configuredMaxUploadMb = Number(process.env.MAX_UPLOAD_MB || 1024000);
-const maxUploadMb = Number.isFinite(configuredMaxUploadMb) && configuredMaxUploadMb > 0 ? configuredMaxUploadMb : 1024000;
+const configuredMaxUploadMb = Number(process.env.MAX_UPLOAD_MB || 2048);
+const maxUploadMb = Number.isFinite(configuredMaxUploadMb) && configuredMaxUploadMb > 0 ? configuredMaxUploadMb : 2048;
+const configuredUploadTimeoutMs = Number(process.env.UPLOAD_TIMEOUT_MS || 30 * 60 * 1000);
+const uploadTimeoutMs =
+  Number.isFinite(configuredUploadTimeoutMs) && configuredUploadTimeoutMs > 0 ? configuredUploadTimeoutMs : 30 * 60 * 1000;
 
 const uploadFolders = {
   poster: "posters",
@@ -70,4 +73,10 @@ const uploadFields = upload.fields([
   { name: "video", maxCount: 1 }
 ]);
 
-module.exports = { upload, uploadFields, uploadFolders };
+const uploadRequestTimeout = (req, res, next) => {
+  req.setTimeout(uploadTimeoutMs);
+  res.setTimeout(uploadTimeoutMs);
+  next();
+};
+
+module.exports = { upload, uploadFields, uploadFolders, uploadRequestTimeout, maxUploadMb };

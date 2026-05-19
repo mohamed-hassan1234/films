@@ -165,5 +165,6 @@ server/
 ## Notes
 
 - Uploaded media is served from `server/uploads`.
+- For deployed video uploads, the reverse proxy must allow large request bodies too. If Nginx sits in front of Node, set `client_max_body_size` to your video limit, for example `2048m`; see `deploy/nginx-streamwave.conf.example`.
 - Seeded posters and banners use neutral placeholder media with original fictional titles.
 - Replace `JWT_SECRET` in production-style testing with a long random value.

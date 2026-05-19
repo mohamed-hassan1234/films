@@ -12,6 +12,7 @@ dotenv.config();
 connectDB();
 
 const app = express();
+app.set("trust proxy", 1);
 const normalizeOrigin = (origin = "") => origin.trim().replace(/\/+$/, "");
 const allowedOrigins = new Set(
   (process.env.CLIENT_URL || "https://flim.atmaengi.com")
@@ -35,8 +36,8 @@ const corsOptions = {
 app.use(helmet({ crossOriginResourcePolicy: { policy: "cross-origin" } }));
 app.use(cors(corsOptions));
 app.options("*", cors(corsOptions));
-app.use(express.json({ limit: "2mb" }));
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: process.env.JSON_BODY_LIMIT || "10mb" }));
+app.use(express.urlencoded({ extended: true, limit: process.env.FORM_BODY_LIMIT || "10mb" }));
 app.use(morgan("dev"));
 app.use(rateLimit({ windowMs: 15 * 60 * 1000, max: 600 }));
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
