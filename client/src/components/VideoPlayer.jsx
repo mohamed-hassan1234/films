@@ -33,6 +33,7 @@ const VideoPlayer = ({ src, poster, onProgress }) => {
   const [muted, setMuted] = useState(false);
   const [loadError, setLoadError] = useState("");
   const [controlsVisible, setControlsVisible] = useState(true);
+  const [mobileLandscape, setMobileLandscape] = useState(false);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -94,6 +95,8 @@ const VideoPlayer = ({ src, poster, onProgress }) => {
     setMuted(nextMuted);
   };
 
+  const shouldRotatePlayer = () => isMobileScreen() && window.innerHeight > window.innerWidth;
+
   const lockLandscape = async () => {
     try {
       if (isMobileScreen() && window.screen?.orientation?.lock) {
@@ -115,11 +118,20 @@ const VideoPlayer = ({ src, poster, onProgress }) => {
   const toggleFullscreen = async () => {
     if (document.fullscreenElement) {
       unlockOrientation();
+      setMobileLandscape(false);
       await document.exitFullscreen?.();
       return;
     }
+
+    const video = videoRef.current;
+    if (isMobileScreen() && video?.webkitEnterFullscreen && !shellRef.current?.requestFullscreen) {
+      video.webkitEnterFullscreen();
+      return;
+    }
+
     await shellRef.current?.requestFullscreen?.();
     await lockLandscape();
+    window.setTimeout(() => setMobileLandscape(shouldRotatePlayer()), 350);
   };
 
   const progress = duration ? (currentTime / duration) * 100 : 0;
@@ -176,11 +188,29 @@ const VideoPlayer = ({ src, poster, onProgress }) => {
 
   useEffect(() => {
     const handleFullscreenChange = () => {
-      if (!document.fullscreenElement) unlockOrientation();
+      if (!document.fullscreenElement) {
+        unlockOrientation();
+        setMobileLandscape(false);
+      }
     };
 
     document.addEventListener("fullscreenchange", handleFullscreenChange);
     return () => document.removeEventListener("fullscreenchange", handleFullscreenChange);
+  }, []);
+
+  useEffect(() => {
+    const updateRotation = () => {
+      if (document.fullscreenElement === shellRef.current) {
+        setMobileLandscape(shouldRotatePlayer());
+      }
+    };
+
+    window.addEventListener("orientationchange", updateRotation);
+    window.addEventListener("resize", updateRotation);
+    return () => {
+      window.removeEventListener("orientationchange", updateRotation);
+      window.removeEventListener("resize", updateRotation);
+    };
   }, []);
 
   if (!src) {
@@ -205,83 +235,91 @@ const VideoPlayer = ({ src, poster, onProgress }) => {
       onTouchStart={() => showControls(true)}
       onTouchEnd={() => showControls(true)}
     >
-      <video
-        ref={videoRef}
-        src={src}
-        poster={poster}
-        className="aspect-video w-full bg-black object-contain"
-        controls={false}
-        playsInline
-        onClick={toggle}
-        onError={() => setLoadError("This video file could not be played by the browser. Use MP4/H.264 or WebM for the best result.")}
-      />
-      {loadError && (
-        <div className="absolute inset-0 grid place-items-center bg-black/85 px-6 text-center text-zinc-200">
-          <div>
-            <div className="text-xl font-semibold">Video cannot play</div>
-            <p className="mt-2 max-w-lg text-sm text-zinc-400">{loadError}</p>
-          </div>
-        </div>
-      )}
-
-      <div className={`pointer-events-none absolute inset-0 hidden place-items-center transition-opacity duration-300 sm:grid ${controlsVisible ? "opacity-100" : "opacity-0"} ${loadError ? "opacity-30" : ""}`}>
-        <div className="pointer-events-auto flex items-center gap-4 rounded-full bg-black/35 p-2 backdrop-blur-sm">
-          <ControlButton label="Back 10 seconds" onClick={() => skip(-10)} small>
-            <RotateCcw size={18} />
-          </ControlButton>
-          <ControlButton label="Play or pause" onClick={toggle} className="h-16 w-16 bg-white text-black hover:bg-zinc-200">
-            {playing ? <Pause size={28} fill="currentColor" /> : <Play size={28} fill="currentColor" />}
-          </ControlButton>
-          <ControlButton label="Forward 10 seconds" onClick={() => skip(10)} small>
-            <RotateCw size={18} />
-          </ControlButton>
-        </div>
-      </div>
-
-      <div className={`absolute inset-x-0 bottom-0 bg-gradient-to-t from-black via-black/70 to-transparent p-3 transition-opacity duration-300 sm:p-4 ${controlsVisible ? "opacity-100" : "pointer-events-none opacity-0"} ${loadError ? "pointer-events-none opacity-30" : ""}`}>
-        <input
-          type="range"
-          min="0"
-          max="100"
-          value={progress}
-          onChange={(event) => seekTo((Number(event.target.value) / 100) * duration)}
-          className="mb-4 h-1 w-full accent-wave-red"
-          aria-label="Video progress"
+      <div
+        className={
+          mobileLandscape
+            ? "absolute left-1/2 top-1/2 h-[100vw] w-[100vh] origin-center -translate-x-1/2 -translate-y-1/2 rotate-90 bg-black"
+            : "relative"
+        }
+      >
+        <video
+          ref={videoRef}
+          src={src}
+          poster={poster}
+          className={mobileLandscape ? "h-full w-full bg-black object-contain" : "aspect-video w-full bg-black object-contain"}
+          controls={false}
+          playsInline
+          onClick={toggle}
+          onError={() => setLoadError("This video file could not be played by the browser. Use MP4/H.264 or WebM for the best result.")}
         />
+        {loadError && (
+          <div className="absolute inset-0 grid place-items-center bg-black/85 px-6 text-center text-zinc-200">
+            <div>
+              <div className="text-xl font-semibold">Video cannot play</div>
+              <p className="mt-2 max-w-lg text-sm text-zinc-400">{loadError}</p>
+            </div>
+          </div>
+        )}
 
-        <div className="flex items-center gap-2 sm:gap-3">
-          <span className="min-w-24 text-xs text-zinc-200 sm:text-sm">
-            {formatTime(currentTime)} / {formatTime(duration)}
-          </span>
-
-          <div className="mx-auto flex items-center gap-3 sm:hidden">
+        <div className={`pointer-events-none absolute inset-0 hidden place-items-center transition-opacity duration-300 sm:grid ${controlsVisible ? "opacity-100" : "opacity-0"} ${loadError ? "opacity-30" : ""}`}>
+          <div className="pointer-events-auto flex items-center gap-4 rounded-full bg-black/35 p-2 backdrop-blur-sm">
             <ControlButton label="Back 10 seconds" onClick={() => skip(-10)} small>
               <RotateCcw size={18} />
             </ControlButton>
-            <ControlButton label="Play or pause" onClick={toggle} small className="bg-white text-black hover:bg-zinc-200">
-              {playing ? <Pause size={20} fill="currentColor" /> : <Play size={20} fill="currentColor" />}
+            <ControlButton label="Play or pause" onClick={toggle} className="h-16 w-16 bg-white text-black hover:bg-zinc-200">
+              {playing ? <Pause size={28} fill="currentColor" /> : <Play size={28} fill="currentColor" />}
             </ControlButton>
             <ControlButton label="Forward 10 seconds" onClick={() => skip(10)} small>
               <RotateCw size={18} />
             </ControlButton>
           </div>
+        </div>
 
-          <div className="ml-auto flex items-center gap-2 sm:gap-3">
-            <button type="button" className="grid h-10 w-10 place-items-center rounded-full bg-white/10 transition hover:bg-white/20" onClick={toggleMute} aria-label="Mute">
-              {muted ? <VolumeX size={19} /> : <Volume2 size={19} />}
-            </button>
-            <input
-              type="range"
-              min="0"
-              max="100"
-              value={volume}
-              onChange={(event) => changeVolume(event.target.value)}
-              className="hidden w-24 accent-wave-red sm:block"
-              aria-label="Volume"
-            />
-            <ControlButton label="Fullscreen" onClick={toggleFullscreen} small>
-              <Maximize size={18} />
-            </ControlButton>
+        <div className={`absolute inset-x-0 bottom-0 bg-gradient-to-t from-black via-black/70 to-transparent p-3 transition-opacity duration-300 sm:p-4 ${controlsVisible ? "opacity-100" : "pointer-events-none opacity-0"} ${loadError ? "pointer-events-none opacity-30" : ""}`}>
+          <input
+            type="range"
+            min="0"
+            max="100"
+            value={progress}
+            onChange={(event) => seekTo((Number(event.target.value) / 100) * duration)}
+            className="mb-4 h-1 w-full accent-wave-red"
+            aria-label="Video progress"
+          />
+
+          <div className="flex items-center gap-2 sm:gap-3">
+            <span className="min-w-24 text-xs text-zinc-200 sm:text-sm">
+              {formatTime(currentTime)} / {formatTime(duration)}
+            </span>
+
+            <div className="mx-auto flex items-center gap-3 sm:hidden">
+              <ControlButton label="Back 10 seconds" onClick={() => skip(-10)} small>
+                <RotateCcw size={18} />
+              </ControlButton>
+              <ControlButton label="Play or pause" onClick={toggle} small className="bg-white text-black hover:bg-zinc-200">
+                {playing ? <Pause size={20} fill="currentColor" /> : <Play size={20} fill="currentColor" />}
+              </ControlButton>
+              <ControlButton label="Forward 10 seconds" onClick={() => skip(10)} small>
+                <RotateCw size={18} />
+              </ControlButton>
+            </div>
+
+            <div className="ml-auto flex items-center gap-2 sm:gap-3">
+              <button type="button" className="grid h-10 w-10 place-items-center rounded-full bg-white/10 transition hover:bg-white/20" onClick={toggleMute} aria-label="Mute">
+                {muted ? <VolumeX size={19} /> : <Volume2 size={19} />}
+              </button>
+              <input
+                type="range"
+                min="0"
+                max="100"
+                value={volume}
+                onChange={(event) => changeVolume(event.target.value)}
+                className="hidden w-24 accent-wave-red sm:block"
+                aria-label="Volume"
+              />
+              <ControlButton label="Fullscreen" onClick={toggleFullscreen} small>
+                <Maximize size={18} />
+              </ControlButton>
+            </div>
           </div>
         </div>
       </div>
