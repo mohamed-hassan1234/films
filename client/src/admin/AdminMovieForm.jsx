@@ -54,6 +54,40 @@ const retryDelayMs = (error, attempt) => {
   return Math.min(30000, 1000 * 2 ** attempt);
 };
 
+const imageTargets = {
+  poster: { width: 900, height: 1350 },
+  banner: { width: 1600, height: 900 },
+  thumbnail: { width: 640, height: 360 }
+};
+
+const imageFileToDataUrl = (file, kind) =>
+  new Promise((resolve, reject) => {
+    if (!file) return resolve("");
+    const image = new window.Image();
+    const objectUrl = URL.createObjectURL(file);
+
+    image.onload = () => {
+      const target = imageTargets[kind] || imageTargets.thumbnail;
+      const scale = Math.min(target.width / image.width, target.height / image.height, 1);
+      const width = Math.max(1, Math.round(image.width * scale));
+      const height = Math.max(1, Math.round(image.height * scale));
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+      const context = canvas.getContext("2d");
+      context.drawImage(image, 0, 0, width, height);
+      URL.revokeObjectURL(objectUrl);
+      resolve(canvas.toDataURL("image/jpeg", 0.86));
+    };
+
+    image.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      reject(new Error("Selected image could not be processed."));
+    };
+
+    image.src = objectUrl;
+  });
+
 const formatBytes = (bytes = 0) => {
   if (!bytes) return "";
   const units = ["B", "KB", "MB", "GB"];
@@ -350,10 +384,17 @@ const AdminMovieForm = () => {
         setRemoved((current) => ({ ...current, video: false }));
       }
 
+      const imageUrls = {
+        posterUrl: removed.poster ? "" : files.poster ? await imageFileToDataUrl(files.poster, "poster") : form.posterUrl,
+        bannerUrl: removed.banner ? "" : files.banner ? await imageFileToDataUrl(files.banner, "banner") : form.bannerUrl,
+        thumbnailUrl: removed.thumbnail ? "" : files.thumbnail ? await imageFileToDataUrl(files.thumbnail, "thumbnail") : form.thumbnailUrl
+      };
+
       const fd = new FormData();
       const selectedGenre = genres.find((genre) => genre._id === form.genreId);
       const payload = {
         ...form,
+        ...imageUrls,
         videoUrl: uploadedVideoUrl,
         status: intent,
         genre: selectedGenre?.name || form.genre,
@@ -364,11 +405,10 @@ const AdminMovieForm = () => {
       };
 
       Object.entries(payload).forEach(([key, value]) => {
-        if (!["posterUrl", "bannerUrl", "thumbnailUrl"].includes(key) && value !== undefined && value !== null) {
+        if (value !== undefined && value !== null) {
           fd.append(key, value);
         }
       });
-      Object.entries(files).forEach(([key, file]) => key !== "video" && file && fd.append(key, file));
       Object.entries(removed).forEach(([key, value]) => value && fd.append(`remove${key}`, "true"));
 
       const config = {

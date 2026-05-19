@@ -70,6 +70,7 @@ const inferUploadPath = (url = "", kind = "") => {
 
 export const toMediaUrl = (url, kind = "") => {
   if (!url) return "";
+  if (url.startsWith("data:")) return url;
   const path = inferUploadPath(url, kind);
   if (path.startsWith("/uploads/")) return `${API_URL}${path}`;
   if (url.startsWith("http")) return url.replace(/^http:\/\//i, "https://");

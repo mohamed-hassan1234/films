@@ -40,6 +40,12 @@ const moviePayload = (req) => {
     trending: req.body.trending === "true" || req.body.trending === true,
     trendingRank: Number(req.body.trendingRank || 0),
     status: req.body.status,
+    poster: uploads.poster || req.body.poster || req.body.posterUrl,
+    banner: uploads.banner || req.body.banner || req.body.bannerUrl,
+    thumbnail: uploads.thumbnail || req.body.thumbnail || req.body.thumbnailUrl,
+    posterUrl: uploads.posterUrl || req.body.posterUrl || req.body.poster,
+    bannerUrl: uploads.bannerUrl || req.body.bannerUrl || req.body.banner,
+    thumbnailUrl: uploads.thumbnailUrl || req.body.thumbnailUrl || req.body.thumbnail,
     videoUrl: uploads.videoUrl || req.body.videoUrl,
     ...uploads
   });
