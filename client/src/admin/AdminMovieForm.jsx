@@ -389,6 +389,9 @@ const AdminMovieForm = () => {
         bannerUrl: removed.banner ? "" : files.banner ? await imageFileToDataUrl(files.banner, "banner") : form.bannerUrl,
         thumbnailUrl: removed.thumbnail ? "" : files.thumbnail ? await imageFileToDataUrl(files.thumbnail, "thumbnail") : form.thumbnailUrl
       };
+      imageUrls.poster = imageUrls.posterUrl;
+      imageUrls.banner = imageUrls.bannerUrl;
+      imageUrls.thumbnail = imageUrls.thumbnailUrl;
 
       const fd = new FormData();
       const selectedGenre = genres.find((genre) => genre._id === form.genreId);
