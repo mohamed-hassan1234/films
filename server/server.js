@@ -48,6 +48,22 @@ app.use(
 );
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
+const legacyUploadFolders = {
+  "poster-": "posters",
+  "banner-": "banners",
+  "thumbnail-": "thumbnails",
+  "video-": "movies"
+};
+
+app.get("/:filename", (req, res, next) => {
+  const filename = path.basename(req.params.filename || "");
+  const matchedPrefix = Object.keys(legacyUploadFolders).find((prefix) => filename.startsWith(prefix));
+  if (!matchedPrefix) return next();
+  return res.sendFile(path.join(__dirname, "uploads", legacyUploadFolders[matchedPrefix], filename), (error) => {
+    if (error) next();
+  });
+});
+
 app.get("/api/health", (_req, res) => res.json({ status: "ok", app: "StreamWave API" }));
 app.use("/api/auth", require("./routes/authRoutes"));
 app.use("/api/profiles", require("./routes/profileRoutes"));

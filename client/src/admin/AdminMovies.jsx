@@ -90,7 +90,7 @@ const AdminMovies = () => {
             <article key={movie._id} className="overflow-hidden rounded-lg border border-white/10 bg-wave-panel shadow-2xl shadow-black/20">
               <div className="aspect-[2/3] bg-white/5">
                 {movie.poster || movie.posterUrl ? (
-                  <img src={toMediaUrl(movie.poster || movie.posterUrl)} alt={movie.title} className="h-full w-full object-cover" />
+                  <img src={toMediaUrl(movie.poster || movie.posterUrl, "poster")} alt={movie.title} className="h-full w-full object-cover" />
                 ) : (
                   <div className="grid h-full place-items-center text-zinc-500">
                     <Film size={36} />

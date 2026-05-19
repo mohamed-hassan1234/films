@@ -51,9 +51,25 @@ api.interceptors.response.use((response) => {
   return response;
 });
 
-export const toMediaUrl = (url) => {
+const inferUploadPath = (url = "", kind = "") => {
+  const value = String(url).trim();
+  if (!value) return "";
+  if (value.startsWith("/uploads/")) return value;
+  if (value.startsWith("uploads/")) return `/${value}`;
+  if (value.startsWith("/")) return value;
+
+  const lower = value.toLowerCase();
+  if (kind === "banner" || lower.startsWith("banner-")) return `/uploads/banners/${value}`;
+  if (kind === "thumbnail" || lower.startsWith("thumbnail-")) return `/uploads/thumbnails/${value}`;
+  if (kind === "video" || lower.startsWith("video-") || /\.(mp4|webm|mov|m4v)$/i.test(value)) return `/uploads/movies/${value}`;
+  if (kind === "poster" || lower.startsWith("poster-") || /\.(jpe?g|png|webp)$/i.test(value)) return `/uploads/posters/${value}`;
+  return value;
+};
+
+export const toMediaUrl = (url, kind = "") => {
   if (!url) return "";
-  return url.startsWith("http") ? url : `${API_URL.replace("/api", "")}${url}`;
+  if (url.startsWith("http")) return url;
+  return `${API_URL.replace("/api", "")}${inferUploadPath(url, kind)}`;
 };
 
 export default api;

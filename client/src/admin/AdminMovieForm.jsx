@@ -85,7 +85,7 @@ const Label = ({ label, hint, children }) => (
 const UploadDropzone = ({ name, title, description, accept, file, existingUrl, progress, onPick, onRemove, video }) => {
   const previewUrl = useMemo(() => {
     if (file) return URL.createObjectURL(file);
-    return toMediaUrl(existingUrl);
+    return toMediaUrl(existingUrl, video ? "video" : name);
   }, [file, existingUrl]);
 
   useEffect(() => {
@@ -398,9 +398,9 @@ const AdminMovieForm = () => {
   };
 
   const mediaProgress = progress || 0;
-  const posterPreview = files.poster ? URL.createObjectURL(files.poster) : toMediaUrl(form.posterUrl);
-  const bannerPreview = files.banner ? URL.createObjectURL(files.banner) : toMediaUrl(form.bannerUrl);
-  const videoPreview = files.video ? URL.createObjectURL(files.video) : toMediaUrl(form.videoUrl);
+  const posterPreview = files.poster ? URL.createObjectURL(files.poster) : toMediaUrl(form.posterUrl, "poster");
+  const bannerPreview = files.banner ? URL.createObjectURL(files.banner) : toMediaUrl(form.bannerUrl, "banner");
+  const videoPreview = files.video ? URL.createObjectURL(files.video) : toMediaUrl(form.videoUrl, "video");
 
   return (
     <form onSubmit={submit} className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">

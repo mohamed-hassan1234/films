@@ -93,7 +93,7 @@ const AdminDashboard = () => {
                     <td className="py-3">
                       <div className="flex items-center gap-3">
                         <div className="h-14 w-10 overflow-hidden rounded bg-white/10">
-                          {(movie.poster || movie.posterUrl) && <img src={toMediaUrl(movie.poster || movie.posterUrl)} className="h-full w-full object-cover" alt="" />}
+                          {(movie.poster || movie.posterUrl) && <img src={toMediaUrl(movie.poster || movie.posterUrl, "poster")} className="h-full w-full object-cover" alt="" />}
                         </div>
                         <span className="font-semibold">{movie.title}</span>
                       </div>

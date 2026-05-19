@@ -36,7 +36,7 @@ const Watch = () => {
     <main className="min-h-screen bg-black px-4 pb-12 pt-24 md:px-8">
       <div className="mx-auto max-w-6xl">
         <Link to={`/details/${item._id}`} className="mb-4 inline-block text-sm text-zinc-400 hover:text-white">Back to details</Link>
-        <VideoPlayer src={toMediaUrl(item.videoUrl)} poster={contentImage(item, "banner")} onProgress={save} />
+        <VideoPlayer src={toMediaUrl(item.videoUrl, "video")} poster={contentImage(item, "banner")} onProgress={save} />
         <h1 className="mt-6 text-3xl font-bold">{item.title}</h1>
         <p className="mt-2 max-w-3xl text-zinc-300">{item.fullDescription || item.description}</p>
       </div>
