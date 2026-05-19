@@ -39,7 +39,13 @@ app.options("*", cors(corsOptions));
 app.use(express.json({ limit: process.env.JSON_BODY_LIMIT || "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: process.env.FORM_BODY_LIMIT || "10mb" }));
 app.use(morgan("dev"));
-app.use(rateLimit({ windowMs: 15 * 60 * 1000, max: 600 }));
+app.use(
+  rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 600,
+    skip: (req) => req.path.startsWith("/api/admin/uploads/videos")
+  })
+);
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 app.get("/api/health", (_req, res) => res.json({ status: "ok", app: "StreamWave API" }));

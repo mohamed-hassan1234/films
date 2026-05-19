@@ -46,6 +46,13 @@ const videoAccept = "video/mp4,video/webm,video/quicktime,.mp4,.webm,.mov,.m4v";
 const configuredChunkMb = Number(import.meta.env.VITE_VIDEO_CHUNK_MB || 0.5);
 const initialVideoChunkSize = 1024 * 1024 * (Number.isFinite(configuredChunkMb) && configuredChunkMb > 0 ? configuredChunkMb : 0.5);
 const minVideoChunkSize = 128 * 1024;
+const wait = (ms) => new Promise((resolve) => window.setTimeout(resolve, ms));
+
+const retryDelayMs = (error, attempt) => {
+  const retryAfter = Number(error.response?.headers?.["retry-after"]);
+  if (Number.isFinite(retryAfter) && retryAfter > 0) return retryAfter * 1000;
+  return Math.min(30000, 1000 * 2 ** attempt);
+};
 
 const formatBytes = (bytes = 0) => {
   if (!bytes) return "";
@@ -163,6 +170,7 @@ const AdminMovieForm = () => {
   const [removed, setRemoved] = useState({});
   const [progress, setProgress] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [uploadingVideo, setUploadingVideo] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [saveStatus, setSaveStatus] = useState("published");
@@ -209,6 +217,20 @@ const AdminMovieForm = () => {
     update(`${name}Url`, "");
   };
 
+  const postChunkWithRetry = async (fd, config, chunkIndex) => {
+    for (let attempt = 0; attempt < 8; attempt += 1) {
+      try {
+        return await api.post("/admin/uploads/videos/chunks", fd, config);
+      } catch (error) {
+        if (error.response?.status !== 429 || attempt === 7) throw error;
+        const delay = retryDelayMs(error, attempt);
+        setMessage(`Server is busy. Waiting ${Math.ceil(delay / 1000)}s, then continuing chunk ${chunkIndex + 1}.`);
+        await wait(delay);
+      }
+    }
+    return null;
+  };
+
   const postVideoChunks = async (file, chunkSize) => {
     const uploadId =
       typeof crypto !== "undefined" && crypto.randomUUID
@@ -229,13 +251,13 @@ const AdminMovieForm = () => {
         fd.append("filename", file.name);
         fd.append("chunk", chunk, file.name);
 
-        await api.post("/admin/uploads/videos/chunks", fd, {
+        await postChunkWithRetry(fd, {
           onUploadProgress: (event) => {
             const loadedInChunk = event.total ? event.loaded / event.total : 0;
             const uploadedRatio = (chunkIndex + loadedInChunk) / totalChunks;
             setProgress(Math.max(1, Math.min(95, Math.round(uploadedRatio * 95))));
           }
-        });
+        }, chunkIndex);
       }
 
       setProgress(97);
@@ -267,6 +289,37 @@ const AdminMovieForm = () => {
     }
 
     throw new Error("Video upload failed because the server rejected even the smallest chunk size.");
+  };
+
+  const handleUploadVideoOnly = async () => {
+    if (!files.video) {
+      setError("Choose a video file first.");
+      return;
+    }
+
+    setUploadingVideo(true);
+    setError("");
+    setMessage("");
+    setProgress(0);
+
+    try {
+      const uploadedVideoUrl = await uploadVideoInChunks(files.video);
+      update("videoUrl", uploadedVideoUrl);
+      setFiles((current) => ({ ...current, video: null }));
+      setRemoved((current) => ({ ...current, video: false }));
+      setProgress(100);
+      setMessage("Video uploaded to the server. The movie now has a playable video link.");
+    } catch (err) {
+      if (err.response?.status === 413) {
+        setError("The server rejects this chunk size. Keep CHUNK_UPLOAD_MB=1 and allow at least 1MB request bodies in the proxy.");
+      } else if (err.response?.status === 429) {
+        setError("The server is still rate-limiting video chunks. Deploy the backend update that skips rate limiting for /api/admin/uploads/videos.");
+      } else {
+        setError(err.response?.data?.message || err.message || "Video could not be uploaded. Try again.");
+      }
+    } finally {
+      setUploadingVideo(false);
+    }
   };
 
   const submit = async (event) => {
@@ -334,6 +387,8 @@ const AdminMovieForm = () => {
     } catch (err) {
       if (err.response?.status === 413) {
         setError("The server still rejects the upload chunks. Set CHUNK_UPLOAD_MB=1 on the API server and allow at least 1MB request bodies in the proxy.");
+      } else if (err.response?.status === 429) {
+        setError("The server is rate-limiting video chunks. Deploy the backend update that skips rate limiting for /api/admin/uploads/videos.");
       } else {
         setError(err.response?.data?.message || err.message || "Movie could not be saved. Check the form and try again.");
       }
@@ -440,6 +495,23 @@ const AdminMovieForm = () => {
             onRemove={removeFile}
             video
           />
+          <div className="mt-4 grid gap-3 rounded-lg border border-white/10 bg-black/30 p-4">
+            <div className="flex flex-wrap items-center gap-3">
+              <button type="button" className="btn-primary" disabled={!files.video || uploadingVideo || loading} onClick={handleUploadVideoOnly}>
+                {uploadingVideo ? <Loader2 size={18} className="animate-spin" /> : <UploadCloud size={18} />}
+                Upload Video to Server
+              </button>
+              {form.videoUrl && <span className="text-sm font-semibold text-emerald-300">Video link ready</span>}
+            </div>
+            {form.videoUrl && (
+              <input
+                className={fieldClass}
+                value={form.videoUrl}
+                readOnly
+                aria-label="Uploaded video URL"
+              />
+            )}
+          </div>
         </Section>
 
         <Section number="4" title="Cast and Extra Details">
