@@ -1,4 +1,5 @@
 const path = require("path");
+const fs = require("fs");
 const express = require("express");
 const cors = require("cors");
 const dotenv = require("dotenv");
@@ -53,6 +54,33 @@ const uploadsPath = path.join(__dirname, "uploads");
 app.use("/uploads", express.static(uploadsPath, { acceptRanges: true, maxAge: "7d" }));
 app.use("/api/uploads", express.static(uploadsPath, { acceptRanges: true, maxAge: "7d" }));
 
+const uploadSearchFolders = ["posters", "banners", "thumbnails", "movies", "images"];
+
+const findUploadedFile = (requestedFolder, requestedFilename) => {
+  const filename = path.basename(requestedFilename || "");
+  if (!filename) return "";
+
+  const folders = [requestedFolder, ...uploadSearchFolders].filter(Boolean);
+  const uniqueFolders = [...new Set(folders)];
+  for (const folder of uniqueFolders) {
+    const candidate = path.join(uploadsPath, path.basename(folder), filename);
+    if (fs.existsSync(candidate)) return candidate;
+  }
+
+  return "";
+};
+
+const sendUploadedFileFallback = (req, res, next) => {
+  const target = findUploadedFile(req.params.folder, req.params.filename);
+  if (!target) return next();
+  return res.sendFile(target, (error) => {
+    if (error) next(error);
+  });
+};
+
+app.get("/uploads/:folder/:filename", sendUploadedFileFallback);
+app.get("/api/uploads/:folder/:filename", sendUploadedFileFallback);
+
 const legacyUploadFolders = {
   "poster-": "posters",
   "banner-": "banners",
@@ -64,7 +92,9 @@ app.get("/:filename", (req, res, next) => {
   const filename = path.basename(req.params.filename || "");
   const matchedPrefix = Object.keys(legacyUploadFolders).find((prefix) => filename.startsWith(prefix));
   if (!matchedPrefix) return next();
-  return res.sendFile(path.join(__dirname, "uploads", legacyUploadFolders[matchedPrefix], filename), (error) => {
+  const target = findUploadedFile(legacyUploadFolders[matchedPrefix], filename);
+  if (!target) return next();
+  return res.sendFile(target, (error) => {
     if (error) next();
   });
 });
@@ -73,7 +103,9 @@ app.get("/api/:filename", (req, res, next) => {
   const filename = path.basename(req.params.filename || "");
   const matchedPrefix = Object.keys(legacyUploadFolders).find((prefix) => filename.startsWith(prefix));
   if (!matchedPrefix) return next();
-  return res.sendFile(path.join(uploadsPath, legacyUploadFolders[matchedPrefix], filename), (error) => {
+  const target = findUploadedFile(legacyUploadFolders[matchedPrefix], filename);
+  if (!target) return next();
+  return res.sendFile(target, (error) => {
     if (error) next();
   });
 });
