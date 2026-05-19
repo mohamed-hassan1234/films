@@ -20,6 +20,8 @@ const ControlButton = ({ children, label, onClick, className = "", small = false
   </button>
 );
 
+const isMobileScreen = () => typeof window !== "undefined" && window.matchMedia("(max-width: 640px)").matches;
+
 const VideoPlayer = ({ src, poster, onProgress }) => {
   const videoRef = useRef(null);
   const shellRef = useRef(null);
@@ -92,12 +94,32 @@ const VideoPlayer = ({ src, poster, onProgress }) => {
     setMuted(nextMuted);
   };
 
-  const toggleFullscreen = () => {
+  const lockLandscape = async () => {
+    try {
+      if (isMobileScreen() && window.screen?.orientation?.lock) {
+        await window.screen.orientation.lock("landscape");
+      }
+    } catch {
+      // Some mobile browsers only allow orientation lock after fullscreen, and some do not allow it at all.
+    }
+  };
+
+  const unlockOrientation = () => {
+    try {
+      window.screen?.orientation?.unlock?.();
+    } catch {
+      // Orientation unlock is best-effort across mobile browsers.
+    }
+  };
+
+  const toggleFullscreen = async () => {
     if (document.fullscreenElement) {
-      document.exitFullscreen?.();
+      unlockOrientation();
+      await document.exitFullscreen?.();
       return;
     }
-    shellRef.current?.requestFullscreen?.();
+    await shellRef.current?.requestFullscreen?.();
+    await lockLandscape();
   };
 
   const progress = duration ? (currentTime / duration) * 100 : 0;
@@ -135,10 +157,10 @@ const VideoPlayer = ({ src, poster, onProgress }) => {
         toggle();
       } else if (event.key === "ArrowRight" || event.key === ">" || event.key === ".") {
         event.preventDefault();
-        skip(5);
+        skip(10);
       } else if (event.key === "ArrowLeft" || event.key === "<" || event.key === ",") {
         event.preventDefault();
-        skip(-5);
+        skip(-10);
       } else if (event.key.toLowerCase() === "f") {
         event.preventDefault();
         toggleFullscreen();
@@ -151,6 +173,15 @@ const VideoPlayer = ({ src, poster, onProgress }) => {
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [currentTime, duration, playing]);
+
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      if (!document.fullscreenElement) unlockOrientation();
+    };
+
+    document.addEventListener("fullscreenchange", handleFullscreenChange);
+    return () => document.removeEventListener("fullscreenchange", handleFullscreenChange);
+  }, []);
 
   if (!src) {
     return (
@@ -193,15 +224,15 @@ const VideoPlayer = ({ src, poster, onProgress }) => {
         </div>
       )}
 
-      <div className={`pointer-events-none absolute inset-0 grid place-items-center transition-opacity duration-300 ${controlsVisible ? "opacity-100" : "opacity-0"} ${loadError ? "opacity-30" : ""}`}>
+      <div className={`pointer-events-none absolute inset-0 hidden place-items-center transition-opacity duration-300 sm:grid ${controlsVisible ? "opacity-100" : "opacity-0"} ${loadError ? "opacity-30" : ""}`}>
         <div className="pointer-events-auto flex items-center gap-4 rounded-full bg-black/35 p-2 backdrop-blur-sm">
-          <ControlButton label="Back 5 seconds" onClick={() => skip(-5)} small>
+          <ControlButton label="Back 10 seconds" onClick={() => skip(-10)} small>
             <RotateCcw size={18} />
           </ControlButton>
           <ControlButton label="Play or pause" onClick={toggle} className="h-16 w-16 bg-white text-black hover:bg-zinc-200">
             {playing ? <Pause size={28} fill="currentColor" /> : <Play size={28} fill="currentColor" />}
           </ControlButton>
-          <ControlButton label="Forward 5 seconds" onClick={() => skip(5)} small>
+          <ControlButton label="Forward 10 seconds" onClick={() => skip(10)} small>
             <RotateCw size={18} />
           </ControlButton>
         </div>
@@ -222,6 +253,18 @@ const VideoPlayer = ({ src, poster, onProgress }) => {
           <span className="min-w-24 text-xs text-zinc-200 sm:text-sm">
             {formatTime(currentTime)} / {formatTime(duration)}
           </span>
+
+          <div className="mx-auto flex items-center gap-3 sm:hidden">
+            <ControlButton label="Back 10 seconds" onClick={() => skip(-10)} small>
+              <RotateCcw size={18} />
+            </ControlButton>
+            <ControlButton label="Play or pause" onClick={toggle} small className="bg-white text-black hover:bg-zinc-200">
+              {playing ? <Pause size={20} fill="currentColor" /> : <Play size={20} fill="currentColor" />}
+            </ControlButton>
+            <ControlButton label="Forward 10 seconds" onClick={() => skip(10)} small>
+              <RotateCw size={18} />
+            </ControlButton>
+          </div>
 
           <div className="ml-auto flex items-center gap-2 sm:gap-3">
             <button type="button" className="grid h-10 w-10 place-items-center rounded-full bg-white/10 transition hover:bg-white/20" onClick={toggleMute} aria-label="Mute">
