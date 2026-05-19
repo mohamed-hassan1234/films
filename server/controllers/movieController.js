@@ -8,7 +8,7 @@ const { toArray, pickUploadUrls, compact } = require("../utils/contentHelpers");
 const escapeRegex = (value = "") => String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 const moviePayload = (req) => {
-  const uploads = pickUploadUrls(req);
+  const uploads = compact(pickUploadUrls(req));
   const shortDescription = req.body.shortDescription || req.body.description;
   const fullDescription = req.body.fullDescription || req.body.description || shortDescription;
   const genreIds = toArray(req.body.genres || req.body.genreId);
@@ -40,6 +40,7 @@ const moviePayload = (req) => {
     trending: req.body.trending === "true" || req.body.trending === true,
     trendingRank: Number(req.body.trendingRank || 0),
     status: req.body.status,
+    videoUrl: uploads.videoUrl || req.body.videoUrl,
     ...uploads
   });
 };

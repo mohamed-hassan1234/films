@@ -292,6 +292,9 @@ const AdminMovieForm = () => {
       let uploadedVideoUrl = form.videoUrl;
       if (files.video) {
         uploadedVideoUrl = await uploadVideoInChunks(files.video);
+        update("videoUrl", uploadedVideoUrl);
+        setFiles((current) => ({ ...current, video: null }));
+        setRemoved((current) => ({ ...current, video: false }));
       }
 
       const fd = new FormData();
@@ -332,7 +335,7 @@ const AdminMovieForm = () => {
       if (err.response?.status === 413) {
         setError("The server still rejects the upload chunks. Set CHUNK_UPLOAD_MB=1 on the API server and allow at least 1MB request bodies in the proxy.");
       } else {
-        setError(err.response?.data?.message || "Movie could not be saved. Check the form and try again.");
+        setError(err.response?.data?.message || err.message || "Movie could not be saved. Check the form and try again.");
       }
     } finally {
       setLoading(false);
